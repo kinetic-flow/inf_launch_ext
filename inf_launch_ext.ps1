@@ -1,37 +1,61 @@
-# INFINITASのレジストリ インストール先の取得に使う
+Add-Type -AssemblyName System.Windows.Forms
+
+$ScriptName = [Regex]::Match( 
+    $MyInvocation.InvocationName,
+    '[^\\]+\Z', 
+    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::SingleLine
+    ).Value
+
+Write-Host "Executing: $ScriptName"
+
+$ScriptIsUsta = $ScriptName -match '.*kr.ps1$'
+if ($ScriptIsUsta) {
+    Write-Host "KR USTA mode"
+    $ScriptIsUsta = $true
+} else {
+    Write-Host "JP eamusement mode"
+    $ScriptIsUsta = $false
+}
+
+# Use to get INFINITAS registry installation path
 $InfRegistry = "HKLM:\SOFTWARE\KONAMI\beatmania IIDX INFINITAS"
 
-# ゲーム本体のパス 通常はレジストリから取得
+# Path of the game itself Usually obtained from the registry
 #$InfPath = "C:\Games\beatmania IIDX INFINITAS\"
 $InfPath = Get-ItemPropertyValue -LiteralPath $InfRegistry -Name "InstallDir"
 $InfExe = Join-Path $InfPath "\game\app\bm2dx.exe"
 $InfLauncher = Join-Path $InfPath "\launcher\modules\bm2dx_launcher.exe"
 cd $InfPath | Out-Null
 
-# bm2dxinf:// のレジストリ
+# bm2dxinf:// registry
 $InfOpen = "HKCR:bm2dxinf\shell\open\command\"
+if ($ScriptIsUsta) {
+    $InfOpen = "HKCR:bm2dx-kr\shell\open\command\"
+}
 
-# このスクリプトのフルパス
+# full path to this script
 $ScriptPath = $MyInvocation.MyCommand.Path
 
-# 設定ファイル
+# setting file
 $ConfigJson = Join-Path $PSScriptRoot "config.json"
 
-$Config = @{
+$Config = [ordered]@{
     "Option"="0"
     "WindowWidth"="1280"
     "WindowHeight"="720"
     "WindowPositionX"="0"
     "WindowPositionY"="0"
     "Borderless"=$false
+    "FsMonitor"="0"
 }
 
-# ウィンドウスタイル（調べてもよくわかんなかった）
-$WSDefault = 348651520
-$WSBorderless = 335544320
+# window style
+# see https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
+$WSDefault = 0x14CC0000
+$WSBorderless = 0x14080000
 
-# Win32API関数の定義
-Add-Type @"
+# Define Win32 API functions
+$Source = @"
     using System;
     using System.Runtime.InteropServices;
 
@@ -50,14 +74,16 @@ Add-Type @"
 
         [DllImport("user32.dll")]
         internal static extern bool GetClientRect(IntPtr hwnd, out RECT lpRect);
+        
+        [DllImport("User32.dll")]
+        public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 
         [StructLayout(LayoutKind.Sequential)]
-		internal struct RECT
-		{
-			public int left, top, right, bottom;
+        internal struct RECT
+        {
+            public int left, top, right, bottom;
         }
         
-        // 外枠の大きさを考慮したウィンドウサイズ変更
         public static void MoveWindow2(IntPtr hndl, int x, int y, int w, int h, bool isBl){
             if(isBl){
                 MoveWindow(hndl, x, y, w, h, true);
@@ -81,15 +107,17 @@ Add-Type @"
             }
 
         }
-        
     }
 "@
+Add-Type -TypeDefinition $Source -Language CSharp 
 
 function Save-Config() {
     $Config | ConvertTo-Json | Out-File -FilePath $ConfigJson -Encoding utf8
 }
 
 function Start-Exe($exe, $workDir, $arg){
+    Write-Host "Start-Exe launching:`n  EXE:  $exe`n  ARG: $arg`n  DIR: $workDir`n"
+
     $info = New-Object System.Diagnostics.ProcessStartInfo
     $info.FileName = $exe
     $info.WorkingDirectory = $workDir
@@ -98,9 +126,8 @@ function Start-Exe($exe, $workDir, $arg){
 
     $p = New-Object System.Diagnostics.Process
     $p.StartInfo = $info
-    
-    $p.Start() | Out-Null
 
+    $p.Start() | Out-Null
     return $p
 }
 
@@ -112,8 +139,34 @@ function Switch-Borderless($isBl){
     }
 }
 
+function Get-Monitor($monitor_number){
+    $monitor_number = [int]$monitor_number
+    # https://stackoverflow.com/questions/7967699/get-screen-resolution-using-wmi-powershell-in-windows-7
+    # get a lit of monitors...
+    $screens  = [system.windows.forms.screen]::AllScreens
 
-# 引数を指定しなかったときにレジストリ変更
+    # find primary monitor first
+    $primary = $screens[0]
+    $col_screens | ForEach-Object {
+        if ("$($_.Primary)" -eq "True") {
+            $primary = $_
+            break
+        }
+    }
+
+    # 0 = primary, 1 and up = monitor number
+    if ($monitor_number -eq 0) {
+        return $primary
+    }
+
+    if ($monitor_number -gt $screens.Count) {
+        return $primary
+    }
+
+    return $screens[$monitor_number - 1]
+}
+
+# change registry when no argument is specified
 if ([string]::IsNullOrEmpty($Args[0])) {
     New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
     $val = Get-ItemPropertyValue -LiteralPath $InfOpen -Name "(default)"
@@ -137,8 +190,16 @@ if ([string]::IsNullOrEmpty($Args[0])) {
             $val = """powershell"" ""-file"" ""${ScriptPath}"" ""%1"""
         }
         3 {
-            $NewScriptPath = Join-Path $InfPath "inf_launch_ext.ps1"
-            Copy-Item $ScriptPath $NewScriptPath
+            $From = Join-Path $PSScriptRoot $ScriptName
+            Copy-Item -Path $From -Destination $InfPath
+
+            $From = Join-Path $PSScriptRoot "infzoom.exe"
+            Copy-Item -Path $From -Destination $InfPath
+
+            $From = Join-Path $PSScriptRoot "infzoom.ini"
+            Copy-Item -Path $From -Destination $InfPath
+
+            $NewScriptPath = Join-Path $InfPath $ScriptName
             $val = """powershell"" ""-file"" ""${NewScriptPath}"" ""%1"""
         }
         Default {
@@ -151,38 +212,40 @@ if ([string]::IsNullOrEmpty($Args[0])) {
     exit
 }
 
-# ゲームを起動するためのもの　ここから
-# 設定ファイルを読み込む
+# Something to start the game from here
+# read configuration file
 if(Test-Path $ConfigJson){
-    $Config = @{}
+    $Config = [ordered]@{}
 (ConvertFrom-Json (Get-Content $ConfigJson -Encoding utf8 -Raw )).psobject.properties | Foreach { $Config[$_.Name] = $_.Value }
 }
 
-
-# ゲーム本体に渡す引数
+# Arguments to pass to the game itself
 $InfArgs = ""
 
-# 引数からトークンを拾う
+# pick up the token from the arguments
 $Args[0] -match "tk=(.{64})" | Out-Null
 $InfArgs += " -t "+$Matches[1]
 
-# トライアルモードなら--trialをつける
+# add --trial for trial mode
 if ($Args[0].Contains("trial")) {
     $InfArgs += " --trial"
 }
 
 echo "Please select option."
-echo "0 : Launcher"
-echo "1 : Normal"
-echo "2 : Normal + window mode"
+echo "0 : Launcher (required for game updates)"
+echo "1 : WASAPI"
+echo "2 : WASAPI + window mode"
 echo "3 : ASIO"
 echo "4 : ASIO + window mode"
+echo "5 : WASAPI + fullscreen borderless with zoom"
+echo "6 : ASIO + fullscreen borderless with zoom"
 
-$num = Read-Host "number(last time: $($Config["Option"]))"
+$num = Read-Host "number(press enter for option $($Config["Option"]))"
 if([string]::IsNullOrEmpty($num)){
     $num=$Config["Option"]
 }
 
+$FullScreenBorderlessWithZoom = $false
 switch ($num) {
     0 {
         Start-Process -FilePath $InfLauncher -ArgumentList $Args[0]
@@ -201,62 +264,92 @@ switch ($num) {
         $InfArgs += " -w"
         $InfArgs += " --asio"
     }
+    5 {
+        $InfArgs += " -w"
+        $FullScreenBorderlessWithZoom = $true
+    }
+    6 {
+        $InfArgs += " -w"
+        $InfArgs += " --asio"
+        $FullScreenBorderlessWithZoom = $true
+    }
     Default {
         exit
     }
 }
 
-# 設定を保存
+if ($ScriptIsUsta) {
+    $InfArgs += " --kr"
+}
+
+# save settings
 $Config["Option"] = [string]$num
 Save-Config
 
-# INFINITASを起動
-$p = Start-Exe($InfExe,"",""""+$InfArgs+"""")
+# start INFINITAS
+$p = Start-Exe $InfExe "" $InfArgs
 
-# ウィンドウモードのとき
-if($InfArgs.Contains("-w")){
-    # ウィンドウ作成まで待つ
+# in window mode...
+if ($InfArgs.Contains("-w")){
+
+    # wait for window creation
     $p.WaitForInputIdle() | Out-Null
-
-    # ウィンドウハンドルの取得
     $handle = $p.MainWindowHandle
 
-    # 前回の位置と大きさにする
-    Switch-Borderless($Config["Borderless"])
-    [Win32Api]::MoveWindow2($handle, $Config["WindowPositionX"], $Config["WindowPositionY"], $Config["WindowWidth"], $Config["WindowHeight"], $Config["Borderless"])
+    if ($FullScreenBorderlessWithZoom) {
+        # we let the separate EXE handle everything for this mode
+        $InfZoomExe = Join-Path $PSScriptRoot "infzoom.exe"
+        $infzoom_p = Start-Exe $InfZoomExe $PSScriptRoot $handle
+        $infzoom_p.WaitForExit() | Out-Null
+        Pause
 
-    echo ""
-    echo "window mode setting"
-    echo "example:"
-    echo "window size -> 1280x720"
-    echo "window position -> 100,100"
-    echo "Press enter key to switch to Borderless window."
+    } else {
 
-    while($true){
-        $inputStr=Read-Host " "
-        if([string]::IsNullOrEmpty($inputStr)){
-            $Config["Borderless"] = (-Not $Config["Borderless"])
-        }elseif($inputStr.Contains("x")){
-            $val = $inputStr.Split('x')
-            $Config["WindowWidth"]=$val[0]
-            $Config["WindowHeight"]=$val[1]
-        }elseif($inputStr.Contains(",")){
-            $val = $inputStr.Split(',')
-            $Config["WindowPositionX"]=$val[0]
-            $Config["WindowPositionY"]=$val[1]
-        }
-
-        # ボーダーレス化
+        # set to previous position and size
         Switch-Borderless($Config["Borderless"])
+        [Win32Api]::MoveWindow2(
+            $handle,
+            $Config["WindowPositionX"],
+            $Config["WindowPositionY"],
+            $Config["WindowWidth"],
+            $Config["WindowHeight"],
+            $Config["Borderless"])
 
-        # 位置とサイズを反映
-        [Win32Api]::MoveWindow2($handle, $Config["WindowPositionX"], $Config["WindowPositionY"], $Config["WindowWidth"], $Config["WindowHeight"], $Config["Borderless"])
+        echo ""
+        echo "window mode setting"
+        echo "example:"
+        echo "  window size -> type 1280x720"
+        echo "  window position -> type 100,100"
+        echo "Press enter key to switch to Borderless window, or use mouse cursor to resize window"
 
-        # 設定ファイルに書き込む
-        Save-Config
+        while($true){
+            $inputStr=Read-Host " "
+            if([string]::IsNullOrEmpty($inputStr)){
+                $Config["Borderless"] = (-Not $Config["Borderless"])
+            }elseif($inputStr.Contains("x")){
+                $val = $inputStr.Split('x')
+                $Config["WindowWidth"]=$val[0]
+                $Config["WindowHeight"]=$val[1]
+            }elseif($inputStr.Contains(",")){
+                $val = $inputStr.Split(',')
+                $Config["WindowPositionX"]=$val[0]
+                $Config["WindowPositionY"]=$val[1]
+            }
+
+            # make borderless
+            Switch-Borderless($Config["Borderless"])
+
+            # Reflect position and size
+            [Win32Api]::MoveWindow2(
+                $handle,
+                $Config["WindowPositionX"],
+                $Config["WindowPositionY"],
+                $Config["WindowWidth"],
+                $Config["WindowHeight"],
+                $Config["Borderless"])
+
+            # write to config file
+            Save-Config
+        }
     }
 }
-
-
-
-
