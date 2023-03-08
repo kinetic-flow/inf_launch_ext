@@ -8,6 +8,8 @@ infzoom is based on [darekasan/inf_launch_ext](https://github.com/darekasan/inf_
 
 infzoom will use functionalities built into Windows to change window decorations and resize the game window. None of this is invasive; it's very unlikely that any of this would be considered a violation of Terms of Service / EULA of Infinitas. It explicitly **does not** hook into DirectX or inject any code into the game or its runtime dependencies.
 
+At a high level, this tool does the following: modify the registry to intercept the bm2dxinf:// protocol used for launching the game, use Win32 API SetWindowPos to resize the game window, consume raw keyboard input from Win32 for handling global hotkeys. That's it.
+
 That being said, contributors of this project (or the fork this project is based on) are **not** responsible for any consequences of using this project, which can include (but not limited to) getting banned from the game service.
 
 Use at your own risk.
