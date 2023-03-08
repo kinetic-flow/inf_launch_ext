@@ -6,13 +6,15 @@ infzoom is a custom launcher for beatmania IIDX Infinitas.
 
 infzoom is based on [darekasan/inf_launch_ext](https://github.com/darekasan/inf_launch_ext).
 
-infzoom will use functionalities built into Windows to change window decorations and resize the game window. None of this is invasive and very unlikely that any of this would be considered a violation of Terms of Service / EULA of Infinitas.
+infzoom will use functionalities built into Windows to change window decorations and resize the game window. None of this is invasive; it's very unlikely that any of this would be considered a violation of Terms of Service / EULA of Infinitas. It explicitly **does not** hook into DirectX or inject any code into the game or its runtime dependencies.
 
 That being said, contributors of this project (or the fork this project is based on) are **not** responsible for any consequences of using this project, which can include (but not limited to) getting banned from the game service.
 
 Use at your own risk.
 
 ## Features
+
+[Click here for video demo](https://www.youtube.com/watch?v=Nb6E8KtnKzw)
 
 The launcher provides the following options:
 
@@ -23,23 +25,49 @@ The launcher provides the following options:
 
 It should work with both Japanese and Korean versions. It has been tested primarily with the Japanese version.
 
+#4 is useful for players with smaller monitors, since Infinitas does not have a "wide skin" or a "CS skin".
+
+Tested on Windows 10 and Windows 11.
+
+## Zoom mode: important notes
+
+This application allows the game window to stretch beyond the visible desktop area, like this:
+
+![window size demo](https://raw.githubusercontent.com/kinetic-flow/infzoom/master/doc_img/monitor.png) <br>
+
+... which effectively gives you the "zoom in" function. You can also "zoom out" instead, of course.
+
+A side effect of this is that, if you have multiple monitors, the game window may spill over to other windows.
+
+Running the game in windowed mode is not originally intended to be possible. You may or may not experience sync issues. Ensure you are launching the game with the correct refresh rate. Your timing offset will most likely need to be changed.
+
+The game window is scaled without any filters, so it can look pixelated. There is not much that can be done about that in this tool, since it (purposefully) does not hook into DirectX. You can try to work around this by changing the Windows desktop size to be something smaller (maybe 1280x720) and launching the game, which would let your GPU or your monitor perform the scaling instead.
+
+If you're trying to capture the game with OBS, use Game Capture. It will let you capture the entire screen, regardless of the zoom settings. If you use other capture methods, you won't get the full image.
+
 ## Installation
 
-#### 1 Go to [Releases](https://github.com/kinetic-flow/infzoom/releases) page and download the latest version.
+#### 1 Go to [Releases](https://github.com/kinetic-flow/infzoom/releases) page and download & extract the latest version.
 
 #### 2 Open a PowerShell window as administrator
 
 #### 3 Change PowerShell execution policy
 ```
 PS> Set-ExecutionPolicy Bypass
+
+Execution Policy Change
+The execution policy helps protect you from scripts that you do not trust. Changing the execution policy might expose
+you to the security risks described in the about_Execution_Policies help topic at
+https:/go.microsoft.com/fwlink/?LinkID=135170. Do you want to change the execution policy?
+[Y] Yes  [A] Yes to All  [N] No  [L] No to All  [S] Suspend  [?] Help (default is "N"):
 ```
-This is required to execute the downloaded PowerShell script.
+Type Y and press enter. This is required to execute the downloaded PowerShell script.
 
 #### 4 Run the script and install it
 
-For Japanese version, run inf_launch_ext.ps1.
+Navigate to the folder where you extracted the contents to.
 
-For Korean Infinitas service by USTA, run inf_launch_ext_kr.ps1.
+For Japanese version, run inf_launch_ext.ps1. For Korean Infinitas service by USTA, run inf_launch_ext<strong>_kr</strong>.ps1.
 
 ```
 PS> .\inf_launch_ext.ps1
@@ -82,7 +110,7 @@ Launches the original Infinitas launcher, which lets you change settings and upd
 
 ### 1 : WASAPI
 
-Run the game right away, with WASAPI audio (the default audio mode).
+Run the game right away, with WASAPI audio (the default audio mode) in full screen.
 
 ### 2 : WASAPI + window mode
 
@@ -90,9 +118,9 @@ Same as #2, but launch the game in a resizable window.
 
 ### 3 : ASIO
 
-Run the game right away, with ASIO audio.
+Run the game right away, with ASIO audio in full screen.
 
-Making the game use ASIO audio requres extra steps - see [this link](https://github.com/darekasan/inf_launch_ext/blob/master/asio.md).
+Making the game use ASIO audio requres extra steps - see [instructions from inf_launch_ext](https://github.com/darekasan/inf_launch_ext/blob/master/asio.md) and [this page on iidx.org](https://iidx.org/misc/infinitas_asio).
 
 ### 4 : ASIO + window mode
 
@@ -112,25 +140,11 @@ The default hotkeys are:
 * Reset zoom & enable manual mode: **F5**
 * In manual mode, move window: **ctrl + up, down, left, or right**
 * In manual mode, change zoom: **alt + up, down, left, or right**
-* Forcibly close game: **alt+ F10****
+* Forcibly close game: **alt + F10**
 
-### 6 :ASIO + fullscreen borderless with zoom
+### 6 : ASIO + fullscreen borderless with zoom
 
 Same as #5, but with ASIO audio.
-
-## Zoom mode: important notes
-
-This application allows the game window to stretch beyond the visible desktop area, like this:
-
-![window size demo](https://raw.githubusercontent.com/kinetic-flow/infzoom/master/doc_img/monitor.png) <br>
-
-... which effectively gives you the "zoom in" function.
-
-A side effect of this is that, if you have multiple monitors, the game window may spill over to other windows.
-
-Running the game in windowed mode is not originally intended to be possible. You may or may not experience sync issues. Ensure you are launching the game with the correct refresh rate.
-
-The game window is scaled without any filters, so it can look pixelated. There is not much that can be done about that, but you can work around this by changing the Windows desktop size to be something smaller (maybe 1280x720) and launching the game.
 
 ## Troubleshooting
 
