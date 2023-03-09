@@ -3,6 +3,14 @@
 #define INI_IMPLEMENTATION
 #include <ini.h>
 
+typedef enum _ZOOM_MODE {
+    ZoomModeNone,
+    ZoomMode1p,
+    ZoomMode2p,
+    ZoomModeDp,
+    ZoomModeMax
+} ZOOM_MODE, *PZOOM_MODE;
+
 typedef union _HOTKEY {
     struct {
         USHORT Mod;
@@ -20,6 +28,7 @@ typedef struct _RELATIVE_RECT {
 
 typedef struct _CONFIG {
     ULONG monitor;
+    ZOOM_MODE ToggleTarget;
     HOTKEY HotKeyExit;
     HOTKEY HotKeyNormal;
     HOTKEY HotKey1P;
@@ -51,10 +60,12 @@ typedef struct _MONITOR_DATA {
 } MONITOR_DATA, *PMONITOR_DATA;
 
 CONFIG GlobalConfig;
-int HotKeyId;
+int HotKeyId = 0;
 MONITOR_DATA GlobalMonitorData;
-HWND InfWindow;
-FILE *fp;
+HWND InfWindow = INVALID_HANDLE_VALUE;
+FILE *fp = NULL;
+ZOOM_MODE CurrentMode = ZoomModeNone;
+BOOL ManualAdjustmentsMade = FALSE;
 
 INT
 CleanupBeforeExit(
@@ -78,6 +89,15 @@ FailFast (
 {
     log_fatal("FATAL: Exiting with error 0x%x", ExitCode);
     CleanupBeforeExit(ExitCode);
+}
+
+ULONG
+ClampUlong (
+    ULONG d,
+    ULONG min,
+    ULONG max) {
+    ULONG t = (d < min) ? min : d;
+    return (t > max) ? max : t;
 }
 
 VOID
@@ -137,6 +157,10 @@ ParseConfig(
 
     Config->AlwaysOnTop = ini_as_bool(ini_get(root, "always_on_top"));
     log_trace("CONFIG: always_on_top %s", Config->AlwaysOnTop ? "true" : "false");
+
+    Config->ToggleTarget = ini_as_uint(ini_get(root, "toggle_target"));
+    Config->ToggleTarget = ClampUlong(Config->ToggleTarget, ZoomMode1p, ZoomModeDp);
+    log_trace("CONFIG: toggle_target %d", Config->ToggleTarget);
 
     ParseConfigForHotkey(root, "exit", &GlobalConfig.HotKeyExit);
     ParseConfigForHotkey(root, "normal", &GlobalConfig.HotKeyNormal);
@@ -220,7 +244,7 @@ ResizeWindow (
 {
     BOOL BoolResult;
     DWORD Flags;
-    DWORD InsertAfter;
+    HWND InsertAfter;
 
     Flags = (
         SWP_ASYNCWINDOWPOS |
@@ -316,18 +340,16 @@ MoveWindowRelative(
     ResizeWindow(x, y, w, h);
 }
 
-BOOL AllowManualMove = FALSE;
-
 VOID
 ResetManualZoom (
     VOID
     )
 {
-    AllowManualMove = TRUE;
     GlobalConfig.ZoomManual.OffsetX = 0;
     GlobalConfig.ZoomManual.OffsetY = 0;
     GlobalConfig.ZoomManual.Width = 1000;
     GlobalConfig.ZoomManual.Height = 1000;
+    ManualAdjustmentsMade = FALSE;
 }
 
 USHORT ActiveModifiers = 0;
@@ -344,6 +366,45 @@ TestHotKeyDown (
         }
     }
     return (Hotkey->k.Key == Kbd->VKey);
+}
+
+VOID
+SwitchMode(
+    ZOOM_MODE NewMode
+    )
+{
+    if (ZoomModeMax <= NewMode) {
+        log_warn("MODE: Invalid mode specified: %d", NewMode);
+        return;
+    }
+    switch (NewMode) {
+        case ZoomModeNone:
+            log_info("MODE: reset zoom to normal view (manual adjustments possible)... ");
+            ResetManualZoom();
+            MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
+            break;
+
+        case ZoomMode1p:
+            log_info("MODE: activate 1P zoom view... ");
+            MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.Zoom1P);
+            break;
+
+        case ZoomMode2p:
+            log_info("MODE: activate 2P zoom view... ");
+            MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.Zoom2P);
+            break;
+
+        case ZoomModeDp:
+            log_info("MODE: activate DP zoom view... ");
+            MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomDP);
+            break;
+
+        case ZoomModeMax:
+        default:
+            FailFast(-1);
+            break;
+    }
+    CurrentMode = NewMode;
 }
 
 VOID
@@ -384,55 +445,65 @@ MessageLoop(
         CleanupBeforeExit(0);
 
     } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyNormal)) {
-        log_info("HOTKEY: reset zoom to normal view (manual adjustments possible)... ");
-        ResetManualZoom();
-        MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
-    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey1P)) {
-        log_info("HOTKEY: activate 1P zoom view... ");
-        AllowManualMove = FALSE;
-        MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.Zoom1P);
-    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey2P)) {
-        log_info("HOTKEY: activate 2P zoom view... ");
-        AllowManualMove = FALSE;
-        MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.Zoom2P);
-    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyDP)) {
-        log_info("HOTKEY: activate DP zoom view... ");
-        AllowManualMove = FALSE;
-        MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomDP);
+        if (CurrentMode == ZoomModeNone) {
+            if (ManualAdjustmentsMade) {
+                // reset manual adjustments and go back to clean state
+                SwitchMode(ZoomModeNone);
+            } else {
+                SwitchMode(GlobalConfig.ToggleTarget);
+            }
+        } else {
+            SwitchMode(ZoomModeNone);
+        }
 
-    } else if (AllowManualMove) {
+    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey1P)) {
+        SwitchMode(ZoomMode1p);
+    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey2P)) {
+        SwitchMode(ZoomMode2p);
+    } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyDP)) {
+        SwitchMode(ZoomModeDp);
+
+    } else if (CurrentMode == ZoomModeNone) {
         if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyUp)) {
             log_info("HOTKEY: manual move UP... ");
             GlobalConfig.ZoomManual.OffsetY -= 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyDown)) {
             log_info("HOTKEY: manual move DOWN... ");
             GlobalConfig.ZoomManual.OffsetY += 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyLeft)) {
             log_info("HOTKEY: manual move LEFT... ");
             GlobalConfig.ZoomManual.OffsetX -= 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyRight)) {
             log_info("HOTKEY: manual move RIGHT... ");
             GlobalConfig.ZoomManual.OffsetX += 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyLong)) {
             log_info("HOTKEY: manual increase height... ");
             GlobalConfig.ZoomManual.Height += 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyShort)) {
             log_info("HOTKEY: manual reduce height... ");
             GlobalConfig.ZoomManual.Height -= 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyWide)) {
             log_info("HOTKEY: manual increase width... ");
             GlobalConfig.ZoomManual.Width += 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyNarrow)) {
             log_info("HOTKEY: manual reduce width... ");
             GlobalConfig.ZoomManual.Width -= 1;
+            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         }
     }
@@ -462,7 +533,6 @@ main(
 
     // find monitor
     GetMonitorsHandle(GlobalConfig.monitor, &GlobalMonitorData);
-    ResetManualZoom();
 
     // find window handle from args
     if (argc < 2) {
@@ -477,19 +547,14 @@ main(
     Result = SetWindowLong(
         InfWindow,
         GWL_STYLE,
-        WS_VISIBLE | WS_CLIPSIBLINGS);
+        WS_VISIBLE);
 
     if (Result == 0) {
         log_error("ERROR: SetWindowLong failed: GLE: %d", GetLastError());
     }
 
     // do initial call to resize
-    log_info("Call ResizeWindow to make window fit the screen...");
-    ResizeWindow(
-        GlobalMonitorData.OffsetX,
-        GlobalMonitorData.OffsetY,
-        GlobalMonitorData.Width,
-        GlobalMonitorData.Height);
+    SwitchMode(ZoomModeNone);
 
     log_info("Create an invisible window to capture hotkeys...");
     CreateNewWindow();
