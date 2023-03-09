@@ -37,6 +37,7 @@ typedef struct _CONFIG {
     RELATIVE_RECT Zoom1P;
     RELATIVE_RECT Zoom2P;
     RELATIVE_RECT ZoomDP;
+    BOOL AlwaysOnTop;
 } CONFIG, *PCONFIG;
 
 typedef struct _MONITOR_DATA {
@@ -134,6 +135,9 @@ ParseConfig(
     Config->monitor = (ULONG)ini_as_uint(ini_get(root, "monitor"));
     log_trace("CONFIG: monitor %d", Config->monitor);
 
+    Config->AlwaysOnTop = ini_as_bool(ini_get(root, "always_on_top"));
+    log_trace("CONFIG: always_on_top %s", Config->AlwaysOnTop ? "true" : "false");
+
     ParseConfigForHotkey(root, "exit", &GlobalConfig.HotKeyExit);
     ParseConfigForHotkey(root, "normal", &GlobalConfig.HotKeyNormal);
 
@@ -215,14 +219,8 @@ ResizeWindow (
     )
 {
     BOOL BoolResult;
-
-    // SetWindowPos works better than MoveWindow in this case, because of SWP_NOSENDCHANGING.
-    // SWP_NOSENDCHANGING allows us to bypass the checks done by the game which restricts how big
-    // the window can be (usually capped around 120% or so).
-
-#if TRUE
-
     DWORD Flags;
+    DWORD InsertAfter;
 
     Flags = (
         SWP_ASYNCWINDOWPOS |
@@ -231,6 +229,15 @@ ResizeWindow (
         SWP_NOSENDCHANGING
     );
 
+    if (GlobalConfig.AlwaysOnTop) {
+        InsertAfter = HWND_TOPMOST;
+    } else {
+        InsertAfter = HWND_TOP;
+    }
+
+    // SetWindowPos works better than MoveWindow in this case, because of SWP_NOSENDCHANGING.
+    // SWP_NOSENDCHANGING allows us to bypass the checks done by the game which restricts how big
+    // the window can be (usually capped around 120% or so).
     BoolResult = SetWindowPos(
         InfWindow,
         HWND_TOP,
@@ -243,24 +250,6 @@ ResizeWindow (
     if (!BoolResult) {
         log_error("ERROR: Call to SetWindowPos failed: GLE: %d", GetLastError());
     }
-
-#endif
-
-#if FALSE
-
-    BoolResult = MoveWindow(
-        InfWindow,
-        x,
-        y,
-        w,
-        h,
-        true); // repaint
-
-    if (!BoolResult) {
-        log_error("ERROR: Call to MoveWindow failed: GLE: %d", GetLastError());
-    }
-
-#endif
 
     return;
 }
