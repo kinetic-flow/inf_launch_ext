@@ -46,7 +46,6 @@ $Config = [ordered]@{
     "WindowPositionX"="0"
     "WindowPositionY"="0"
     "Borderless"=$false
-    "FsMonitor"="0"
 }
 
 # window style
@@ -168,18 +167,27 @@ function Get-Monitor($monitor_number){
 
 # change registry when no argument is specified
 if ([string]::IsNullOrEmpty($Args[0])) {
+    echo("Script install / uninstall")
+    if (!(New-Object Security.Principal.WindowsPrincipal(
+                [Security.Principal.WindowsIdentity]::GetCurrent()
+            )).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Host "ERROR: please run the script as administrator!" -ForegroundColor Red
+        Pause
+        exit;
+    }
+    
     New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
     $val = Get-ItemPropertyValue -LiteralPath $InfOpen -Name "(default)"
 
-    echo("currently command: " + $val)
+    echo("current command: " + $val)
     echo ""
     echo("script path: " + $ScriptPath)
     echo("game path: " + $InfPath)
     echo ""
     
-    echo "0 : revert to default"
+    echo "0 : revert to default (uninstall)"
     echo "1 : set to this script path"
-    echo "3 : copy script file to game directory and set to new script path (recommended)"
+    echo "3 : copy script file to game directory and set to new script path (install)"
     $num = Read-Host "number->"
 
     switch ($num) {
@@ -240,7 +248,7 @@ echo "4 : ASIO + window mode"
 echo "5 : WASAPI + fullscreen borderless with zoom"
 echo "6 : ASIO + fullscreen borderless with zoom"
 
-$num = Read-Host "number(press enter for option $($Config["Option"]))"
+$num = Read-Host "number (press enter for option $($Config["Option"]))"
 if([string]::IsNullOrEmpty($num)){
     $num=$Config["Option"]
 }
