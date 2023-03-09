@@ -14,6 +14,9 @@ That being said, contributors of this project (or the fork this project is based
 
 Use at your own risk.
 
+> **Warning**
+> When running in windowed or borderless fullscreen mode, the game will lock to 60FPS. This is very unfortunate but the game seems to be doing this intentionally.
+
 ## Features
 
 [Click here for video demo](https://www.youtube.com/watch?v=Nb6E8KtnKzw)
@@ -106,6 +109,9 @@ Please select option.
 number(press enter for option 0):
 ```
 
+> **Warning**
+> As noted above, when running in windowed or borderless fullscreen mode, the game will lock to 60FPS. This is very unfortunate but the game seems to be doing this intentionally.
+
 ### 0 : Launcher
 
 Launches the original Infinitas launcher, which lets you change settings and update the game. You should run this once in a while to check for updates, since other options bypass the update check.
@@ -140,8 +146,8 @@ The default hotkeys are:
 * Zoom into 2P: **F2**
 * Zoom into DP: **F3**
 * Reset zoom & enable manual mode: **F5**
-* In manual mode, move window: **ctrl + up, down, left, or right**
-* In manual mode, change zoom: **alt + up, down, left, or right**
+  * In manual mode, move window: **ctrl + up, down, left, or right**
+  * In manual mode, change zoom: **alt + up, down, left, or right**
 * Forcibly close game: **alt + F10**
 
 ### 6 : ASIO + fullscreen borderless with zoom
