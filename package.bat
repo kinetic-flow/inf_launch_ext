@@ -6,7 +6,7 @@ del /q /s dist\infzoom
 mkdir dist\infzoom
 
 copy /y LICENSE dist\infzoom\LICENSE.txt
-copy /y README.md dist\infzoom
+copy /y README.txt dist\infzoom
 
 copy /y inf_launch_ext.ps1 dist\infzoom
 copy /y inf_launch_ext.ps1 dist\infzoom\inf_launch_ext_kr.ps1
