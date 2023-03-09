@@ -140,8 +140,8 @@ The default hotkeys are:
 * Zoom into 2P: **F2**
 * Zoom into DP: **F3**
 * Reset zoom & enable manual mode: **F5**
-* In manual mode, move window: **ctrl + up, down, left, or right**
-* In manual mode, change zoom: **alt + up, down, left, or right**
+  * In manual mode, move window: **ctrl + up, down, left, or right**
+  * In manual mode, change zoom: **alt + up, down, left, or right**
 * Forcibly close game: **alt + F10**
 
 ### 6 : ASIO + fullscreen borderless with zoom
