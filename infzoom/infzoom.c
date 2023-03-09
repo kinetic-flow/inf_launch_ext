@@ -28,7 +28,6 @@ typedef struct _RELATIVE_RECT {
 
 typedef struct _CONFIG {
     ULONG monitor;
-    ZOOM_MODE ToggleTarget;
     HOTKEY HotKeyExit;
     HOTKEY HotKeyNormal;
     HOTKEY HotKey1P;
@@ -65,6 +64,7 @@ MONITOR_DATA GlobalMonitorData;
 HWND InfWindow = INVALID_HANDLE_VALUE;
 FILE *fp = NULL;
 ZOOM_MODE CurrentMode = ZoomModeNone;
+ZOOM_MODE LastMode = ZoomModeNone;
 BOOL ManualAdjustmentsMade = FALSE;
 
 INT
@@ -157,10 +157,6 @@ ParseConfig(
 
     Config->AlwaysOnTop = ini_as_bool(ini_get(root, "always_on_top"));
     log_trace("CONFIG: always_on_top %s", Config->AlwaysOnTop ? "true" : "false");
-
-    Config->ToggleTarget = ini_as_uint(ini_get(root, "toggle_target"));
-    Config->ToggleTarget = ClampUlong(Config->ToggleTarget, ZoomMode1p, ZoomModeDp);
-    log_trace("CONFIG: toggle_target %d", Config->ToggleTarget);
 
     ParseConfigForHotkey(root, "exit", &GlobalConfig.HotKeyExit);
     ParseConfigForHotkey(root, "normal", &GlobalConfig.HotKeyNormal);
@@ -404,6 +400,7 @@ SwitchMode(
             FailFast(-1);
             break;
     }
+    LastMode = CurrentMode;
     CurrentMode = NewMode;
 }
 
@@ -450,7 +447,7 @@ MessageLoop(
                 // reset manual adjustments and go back to clean state
                 SwitchMode(ZoomModeNone);
             } else {
-                SwitchMode(GlobalConfig.ToggleTarget);
+                SwitchMode(LastMode);
             }
         } else {
             SwitchMode(ZoomModeNone);
