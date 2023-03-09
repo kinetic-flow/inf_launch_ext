@@ -242,11 +242,11 @@ if ($Args[0].Contains("trial")) {
 echo "Please select option."
 echo "0 : Launcher (required for game updates)"
 echo "1 : WASAPI"
-echo "2 : WASAPI + window mode"
+echo "2 : WASAPI + window mode (60Hz only)"
 echo "3 : ASIO"
-echo "4 : ASIO + window mode"
-echo "5 : WASAPI + fullscreen borderless with zoom"
-echo "6 : ASIO + fullscreen borderless with zoom"
+echo "4 : ASIO + window mode (60Hz only)"
+echo "5 : WASAPI + fullscreen borderless (60Hz only) with zoom"
+echo "6 : ASIO + fullscreen borderless (60Hz only) with zoom"
 
 $num = Read-Host "number (press enter for option $($Config["Option"]))"
 if([string]::IsNullOrEmpty($num)){
