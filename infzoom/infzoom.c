@@ -64,8 +64,6 @@ MONITOR_DATA GlobalMonitorData;
 HWND InfWindow = INVALID_HANDLE_VALUE;
 FILE *fp = NULL;
 ZOOM_MODE CurrentMode = ZoomModeNone;
-ZOOM_MODE LastMode = ZoomModeNone;
-BOOL ManualAdjustmentsMade = FALSE;
 
 INT
 CleanupBeforeExit(
@@ -345,7 +343,6 @@ ResetManualZoom (
     GlobalConfig.ZoomManual.OffsetY = 0;
     GlobalConfig.ZoomManual.Width = 1000;
     GlobalConfig.ZoomManual.Height = 1000;
-    ManualAdjustmentsMade = FALSE;
 }
 
 USHORT ActiveModifiers = 0;
@@ -400,7 +397,6 @@ SwitchMode(
             FailFast(-1);
             break;
     }
-    LastMode = CurrentMode;
     CurrentMode = NewMode;
 }
 
@@ -442,65 +438,59 @@ MessageLoop(
         CleanupBeforeExit(0);
 
     } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyNormal)) {
-        if (CurrentMode == ZoomModeNone) {
-            if (ManualAdjustmentsMade) {
-                // reset manual adjustments and go back to clean state
-                SwitchMode(ZoomModeNone);
-            } else {
-                SwitchMode(LastMode);
-            }
-        } else {
-            SwitchMode(ZoomModeNone);
-        }
-
+        SwitchMode(ZoomModeNone);
     } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey1P)) {
-        SwitchMode(ZoomMode1p);
+        if (CurrentMode == ZoomMode1p) {
+            SwitchMode(ZoomModeNone);
+        } else {
+            SwitchMode(ZoomMode1p);
+        }
     } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKey2P)) {
-        SwitchMode(ZoomMode2p);
+        if (CurrentMode == ZoomMode2p) {
+            SwitchMode(ZoomModeNone);
+        } else {
+            SwitchMode(ZoomMode2p);
+        }
     } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyDP)) {
-        SwitchMode(ZoomModeDp);
+        if (CurrentMode == ZoomModeDp) {
+            SwitchMode(ZoomModeNone);
+        } else {
+            SwitchMode(ZoomModeDp);
+        }
 
     } else if (CurrentMode == ZoomModeNone) {
         if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyUp)) {
             log_info("HOTKEY: manual move UP... ");
             GlobalConfig.ZoomManual.OffsetY -= 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyDown)) {
             log_info("HOTKEY: manual move DOWN... ");
             GlobalConfig.ZoomManual.OffsetY += 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyLeft)) {
             log_info("HOTKEY: manual move LEFT... ");
             GlobalConfig.ZoomManual.OffsetX -= 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyRight)) {
             log_info("HOTKEY: manual move RIGHT... ");
             GlobalConfig.ZoomManual.OffsetX += 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyLong)) {
             log_info("HOTKEY: manual increase height... ");
             GlobalConfig.ZoomManual.Height += 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyShort)) {
             log_info("HOTKEY: manual reduce height... ");
             GlobalConfig.ZoomManual.Height -= 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyWide)) {
             log_info("HOTKEY: manual increase width... ");
             GlobalConfig.ZoomManual.Width += 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         } else if (TestHotKeyDown(Kbd, &GlobalConfig.HotKeyNarrow)) {
             log_info("HOTKEY: manual reduce width... ");
             GlobalConfig.ZoomManual.Width -= 1;
-            ManualAdjustmentsMade = TRUE;
             MoveWindowRelative(&GlobalMonitorData, &GlobalConfig.ZoomManual);
         }
     }
