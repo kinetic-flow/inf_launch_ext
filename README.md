@@ -76,7 +76,7 @@ For Japanese version, run inf_launch_ext.ps1. For Korean Infinitas service by US
 
 ```
 PS> .\inf_launch_ext.ps1
-currently command: "C:\Games\beatmania IIDX INFINITAS\\launcher\modules\bm2dx_launcher.exe" "%1"
+current command: "C:\Games\beatmania IIDX INFINITAS\\launcher\modules\bm2dx_launcher.exe" "%1"
 
 script path: C:\Users\darekasan\Downloads\inf_launch_ext.ps1
 game path: C:\Games\beatmania IIDX INFINITAS\
@@ -101,11 +101,11 @@ JP eamusement mode
 Please select option.
 0 : Launcher (required for game updates)
 1 : WASAPI
-2 : WASAPI + window mode
+2 : WASAPI + window mode (60Hz only)
 3 : ASIO
-4 : ASIO + window mode
-5 : WASAPI + fullscreen borderless with zoom
-6 : ASIO + fullscreen borderless with zoom
+4 : ASIO + window mode (60Hz only)
+5 : WASAPI + fullscreen borderless (60Hz only) with zoom
+6 : ASIO + fullscreen borderless (60Hz only) with zoom
 number(press enter for option 0):
 ```
 
