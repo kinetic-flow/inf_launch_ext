@@ -120,7 +120,7 @@ Launches the original Infinitas launcher, which lets you change settings and upd
 
 Run the game right away, with WASAPI audio (the default audio mode) in full screen.
 
-### 2 : WASAPI + window mode
+### 2 : WASAPI + window mode (60Hz only)
 
 Same as #2, but launch the game in a resizable window. 
 
@@ -130,11 +130,11 @@ Run the game right away, with ASIO audio in full screen.
 
 Making the game use ASIO audio requres extra steps - see [instructions from inf_launch_ext](https://github.com/darekasan/inf_launch_ext/blob/master/asio.md) and [this page on iidx.org](https://iidx.org/misc/infinitas_asio).
 
-### 4 : ASIO + window mode
+### 4 : ASIO + window mode (60Hz only)
 
 Same as #3, but launch the game in a resizable window. 
 
-### 5 : WASAPI + fullscreen borderless with zoom
+### 5 : WASAPI + fullscreen borderless (60Hz only) with zoom
 
 Launch the game with WASAPI audio with "borderless fullscreen" window. It also runs infzoom.exe which give you the ability to resize the window with hotkeys.
 
@@ -150,7 +150,7 @@ The default hotkeys are:
   * In manual mode, change zoom: **alt + up, down, left, or right**
 * Forcibly close game: **alt + F10**
 
-### 6 : ASIO + fullscreen borderless with zoom
+### 6 : ASIO + fullscreen borderless (60Hz only) with zoom
 
 Same as #5, but with ASIO audio.
 
