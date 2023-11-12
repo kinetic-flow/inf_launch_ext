@@ -16,6 +16,7 @@ Use at your own risk.
 
 > **Warning**
 > When running in windowed or borderless fullscreen mode, the game will lock to 60FPS. This is very unfortunate but the game seems to be doing this intentionally.
+> There is a fork of this project that uses Special-K which injects DirectX DLLs to make it possible to play at 120Hz in a window. Please check it out [here](https://github.com/chinimuruhi/infzoom-for-special-k/)
 
 ## Features
 
