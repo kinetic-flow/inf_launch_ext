@@ -2,6 +2,10 @@
 
 infzoom is a custom launcher for beatmania IIDX Infinitas.
 
+# 2024 Infinitas Update
+
+It's been tested with 2024 version of Infinitas client that was upgraded to 1080p. Everything should work out of the box. Unfortunately running it in windowed mode will still be locked to 60Hz.
+
 ## Disclaimers
 
 infzoom is based on [darekasan/inf_launch_ext](https://github.com/darekasan/inf_launch_ext).
